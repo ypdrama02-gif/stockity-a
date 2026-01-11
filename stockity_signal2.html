@@ -1,5 +1,3 @@
-01.12 07.29
-stockity-ai 2
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -68,7 +66,7 @@ footer{
 
 <div class="container">
 
-<div id="modeBox" class="mode scalp"> SCALPING MODE</div>
+<div id="modeBox" class="mode scalp">🔵 SCALPING MODE</div>
 
 <div id="ruleBox" class="box">
 Fast & Safe<br>BB bounce + Stochastic
@@ -83,10 +81,10 @@ SAFE LOCK: 10:00
 </div>
 
 <!-- Tombol hasil -->
-<button onclick="buyWin()"> BUY WIN</button>
-<button onclick="buyLoss()"> BUY LOSS</button>
-<button onclick="sellWin()"> SELL WIN</button>
-<button onclick="sellLoss()"> SELL LOSS</button>
+<button onclick="buyWin()">📈 BUY WIN</button>
+<button onclick="buyLoss()">📉 BUY LOSS</button>
+<button onclick="sellWin()">📈 SELL WIN</button>
+<button onclick="sellLoss()">📉 SELL LOSS</button>
 
 <!-- Chart -->
 <div class="tradingview-widget-container" style="margin-top:10px;">
@@ -112,7 +110,7 @@ function updateAI(){
 
   if(lossCount >= 2){
     modeBox.className = "mode safe";
-    modeBox.innerHTML = " SAFE MODE";
+    modeBox.innerHTML = "🔴 SAFE MODE";
     ruleBox.innerHTML = "2 LOSS berturut<br>STOP trading";
     confidence = 30;
     startLock(600);
@@ -123,7 +121,7 @@ function updateAI(){
     confidence = 85;
   } else {
     modeBox.className = "mode scalp";
-    modeBox.innerHTML = " SCALPING MODE";
+    modeBox.innerHTML = "🔵 SCALPING MODE";
     ruleBox.innerHTML = "Fast & Safe<br>BB + Stochastic";
     confidence = 65;
   }
