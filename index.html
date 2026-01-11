@@ -3,172 +3,171 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stockity AI Trader</title>
+<title>Stockity AI Signal</title>
 
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
+  font-family:Arial,Helvetica,sans-serif;
   background:#0f172a;
   color:#e5e7eb;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
 }
-header{
-  background:#020617;
-  padding:12px;
-  text-align:center;
-  font-weight:bold;
-}
-.container{ padding:12px; }
-
-.mode{
-  padding:12px;
-  border-radius:12px;
-  text-align:center;
-  font-weight:bold;
-  margin-top:8px;
-}
-.trend{ background:#064e3b; }
-.scalp{ background:#1e3a8a; }
-.safe{ background:#7f1d1d; }
-
-.box{
-  margin-top:8px;
-  padding:10px;
-  border-radius:10px;
-  background:#020617;
-  text-align:center;
-  font-weight:bold;
-}
-
-button{
+.app{
   width:100%;
-  padding:10px;
-  margin-top:6px;
+  max-width:420px;
+  padding:16px;
+}
+.box{
   background:#020617;
-  color:#e5e7eb;
-  border:1px solid #334155;
-  border-radius:8px;
-  font-size:14px;
-}
-
-footer{
+  border-radius:14px;
+  padding:14px;
+  margin-bottom:10px;
   text-align:center;
-  font-size:12px;
-  opacity:0.6;
-  margin:10px;
 }
+.signal{
+  font-size:30px;
+  font-weight:bold;
+  padding:20px;
+}
+button{
+  width:48%;
+  padding:12px;
+  margin:4px 1%;
+  border:none;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:bold;
+}
+.win{background:#16a34a;color:#fff;}
+.loss{background:#dc2626;color:#fff;}
+button:disabled{opacity:0.4;}
 </style>
 </head>
 
 <body>
+<div class="app">
 
-<header>🤖 Stockity AI Trader (Final)</header>
+  <div id="modeBox" class="box">🤖 MODE: SCALPING</div>
+  <div id="confidenceBox" class="box">Confidence: 65%</div>
 
-<div class="container">
+  <div id="signalBig" class="box signal">⚪ WAIT</div>
 
-<div id="modeBox" class="mode scalp">🔵 SCALPING MODE</div>
+  <div id="statsBox" class="box" style="font-size:14px;">
+    📊 Trade: 0 | ✅ Win: 0/3 | ❌ Loss: 0/2 | 🎯 WR: 0%
+  </div>
 
-<div id="ruleBox" class="box">
-Fast & Safe<br>BB bounce + Stochastic
-</div>
+  <div class="box">
+    <button id="bw" class="win" onclick="recordWin()">BUY WIN</button>
+    <button id="bl" class="loss" onclick="recordLoss()">BUY LOSS</button>
+    <button id="sw" class="win" onclick="recordWin()">SELL WIN</button>
+    <button id="sl" class="loss" onclick="recordLoss()">SELL LOSS</button>
+  </div>
 
-<div id="confidenceBox" class="box">
-Confidence: 65%
-</div>
-
-<div id="lockBox" class="box" style="display:none;background:#7f1d1d;">
-SAFE LOCK: 10:00
-</div>
-
-<!-- Tombol hasil -->
-<button onclick="buyWin()">📈 BUY WIN</button>
-<button onclick="buyLoss()">📉 BUY LOSS</button>
-<button onclick="sellWin()">📈 SELL WIN</button>
-<button onclick="sellLoss()">📉 SELL LOSS</button>
-
-<!-- Chart -->
-<div class="tradingview-widget-container" style="margin-top:10px;">
-  <div id="tv_chart"></div>
-</div>
+  <div class="box" style="font-size:12px;line-height:1.5;opacity:0.75;text-align:left;">
+    ✅ Ini <b>assistant keputusan</b>, bukan auto klik<br>
+    🛡️ Aman dari banned<br>
+    👶 Cocok untuk pemula<br>
+    💪 Profit = disiplin
+  </div>
 
 </div>
 
-<footer>AI Rule Engine • Android Safe</footer>
+<audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
-<script src="https://s3.tradingview.com/tv.js"></script>
 <script>
-let winCount = 0;
-let lossCount = 0;
+/* ===== SETTING ===== */
 let confidence = 65;
-let lockTime = 0;
-let lockInterval = null;
+let win = 0;
+let loss = 0;
+let tradeCount = 0;
 
-function updateAI(){
-  const modeBox = document.getElementById("modeBox");
-  const ruleBox = document.getElementById("ruleBox");
-  const confBox = document.getElementById("confidenceBox");
+const MAX_TRADE = 5;
+const TARGET_WIN = 3;
+const TARGET_LOSS = 2;
 
-  if(lossCount >= 2){
-    modeBox.className = "mode safe";
-    modeBox.innerHTML = "🔴 SAFE MODE";
-    ruleBox.innerHTML = "2 LOSS berturut<br>STOP trading";
-    confidence = 30;
-    startLock(600);
-  } else if(winCount >= 2){
-    modeBox.className = "mode trend";
-    modeBox.innerHTML = "🟢 TREND MODE";
-    ruleBox.innerHTML = "Ikuti trend<br>Pullback MA 21";
-    confidence = 85;
-  } else {
-    modeBox.className = "mode scalp";
-    modeBox.innerHTML = "🔵 SCALPING MODE";
-    ruleBox.innerHTML = "Fast & Safe<br>BB + Stochastic";
-    confidence = 65;
+/* ===== LOCK BUTTON ===== */
+function lockButtons(lock){
+  ["bw","bl","sw","sl"].forEach(id=>{
+    const b = document.getElementById(id);
+    b.disabled = lock;
+  });
+}
+
+/* ===== SIGNAL ===== */
+function setSignal(type){
+  const box = document.getElementById("signalBig");
+  const beep = document.getElementById("beep");
+
+  if(type==="BUY"){
+    box.innerHTML="🟢 BUY";
+    box.style.background="#065f46";
+    lockButtons(false);
+    beep.play();
   }
-  confBox.innerHTML = "Confidence: " + confidence + "%";
+  else if(type==="SELL"){
+    box.innerHTML="🔴 SELL";
+    box.style.background="#7f1d1d";
+    lockButtons(false);
+    beep.play(); setTimeout(()=>beep.play(),200);
+  }
+  else{
+    box.innerHTML="⚪ WAIT";
+    box.style.background="#020617";
+    lockButtons(true);
+  }
 }
 
-function startLock(sec){
-  if(lockInterval) return;
-  const lockBox = document.getElementById("lockBox");
-  lockTime = sec;
-  lockBox.style.display = "block";
-  lockInterval = setInterval(()=>{
-    let m = Math.floor(lockTime/60);
-    let s = lockTime%60;
-    lockBox.innerHTML = `SAFE LOCK: ${m}:${s<10?'0':''}${s}`;
-    lockTime--;
-    if(lockTime < 0){
-      clearInterval(lockInterval);
-      lockInterval = null;
-      lockBox.style.display = "none";
-      winCount = 0;
-      lossCount = 0;
-      updateAI();
-    }
-  },1000);
+/* ===== AI SIMULASI ===== */
+function updateAI(){
+  const modes=["SCALPING","TREND","SAFE"];
+  const mode=modes[Math.floor(Math.random()*modes.length)];
+  confidence=Math.floor(Math.random()*41)+50;
+
+  document.getElementById("modeBox").innerHTML="🤖 MODE: "+mode;
+  document.getElementById("confidenceBox").innerHTML="Confidence: "+confidence+"%";
+
+  if(mode==="SAFE" || confidence<60 || tradeCount>=MAX_TRADE){
+    setSignal("WAIT");
+  }else{
+    setSignal(Math.random()>0.5?"BUY":"SELL");
+  }
 }
 
-function buyWin(){ if(lockInterval) return; winCount++; lossCount=0; updateAI(); }
-function sellWin(){ if(lockInterval) return; winCount++; lossCount=0; updateAI(); }
-function buyLoss(){ if(lockInterval) return; lossCount++; winCount=0; updateAI(); }
-function sellLoss(){ if(lockInterval) return; lossCount++; winCount=0; updateAI(); }
+/* ===== STAT ===== */
+function updateStats(){
+  const total=win+loss;
+  const wr=total>0?((win/total)*100).toFixed(1):0;
 
-new TradingView.widget({
-  width:"100%",
-  height:420,
-  symbol:"FX:EURUSD",
-  interval:"1",
-  theme:"dark",
-  studies:[
-    "MA@tv-basicstudies",
-    "RSI@tv-basicstudies",
-    "BB@tv-basicstudies",
-    "Stochastic@tv-basicstudies"
-  ],
-  container_id:"tv_chart"
-});
+  document.getElementById("statsBox").innerHTML=
+    `📊 Trade: ${total} | ✅ Win: ${win}/${TARGET_WIN} | ❌ Loss: ${loss}/${TARGET_LOSS} | 🎯 WR: ${wr}%`;
 
+  if(win>=TARGET_WIN){
+    setSignal("WAIT");
+    alert("🎯 TARGET PROFIT TERCAPAI\nSTOP SESI");
+  }
+  if(loss>=TARGET_LOSS){
+    setSignal("WAIT");
+    alert("🛑 BATAS LOSS TERCAPAI\nSTOP & EVALUASI");
+  }
+}
+
+/* ===== RECORD ===== */
+function recordWin(){
+  if(tradeCount>=MAX_TRADE) return;
+  win++; tradeCount++;
+  updateStats(); updateAI();
+}
+function recordLoss(){
+  if(tradeCount>=MAX_TRADE) return;
+  loss++; tradeCount++;
+  updateStats(); updateAI();
+}
+
+/* ===== START ===== */
 updateAI();
 </script>
 
