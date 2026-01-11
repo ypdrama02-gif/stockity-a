@@ -1,0 +1,178 @@
+01.12 07.29
+stockity-ai 2
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stockity AI Trader</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial, sans-serif;
+  background:#0f172a;
+  color:#e5e7eb;
+}
+header{
+  background:#020617;
+  padding:12px;
+  text-align:center;
+  font-weight:bold;
+}
+.container{ padding:12px; }
+
+.mode{
+  padding:12px;
+  border-radius:12px;
+  text-align:center;
+  font-weight:bold;
+  margin-top:8px;
+}
+.trend{ background:#064e3b; }
+.scalp{ background:#1e3a8a; }
+.safe{ background:#7f1d1d; }
+
+.box{
+  margin-top:8px;
+  padding:10px;
+  border-radius:10px;
+  background:#020617;
+  text-align:center;
+  font-weight:bold;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  margin-top:6px;
+  background:#020617;
+  color:#e5e7eb;
+  border:1px solid #334155;
+  border-radius:8px;
+  font-size:14px;
+}
+
+footer{
+  text-align:center;
+  font-size:12px;
+  opacity:0.6;
+  margin:10px;
+}
+</style>
+</head>
+
+<body>
+
+<header>🤖 Stockity AI Trader (Final)</header>
+
+<div class="container">
+
+<div id="modeBox" class="mode scalp"> SCALPING MODE</div>
+
+<div id="ruleBox" class="box">
+Fast & Safe<br>BB bounce + Stochastic
+</div>
+
+<div id="confidenceBox" class="box">
+Confidence: 65%
+</div>
+
+<div id="lockBox" class="box" style="display:none;background:#7f1d1d;">
+SAFE LOCK: 10:00
+</div>
+
+<!-- Tombol hasil -->
+<button onclick="buyWin()"> BUY WIN</button>
+<button onclick="buyLoss()"> BUY LOSS</button>
+<button onclick="sellWin()"> SELL WIN</button>
+<button onclick="sellLoss()"> SELL LOSS</button>
+
+<!-- Chart -->
+<div class="tradingview-widget-container" style="margin-top:10px;">
+  <div id="tv_chart"></div>
+</div>
+
+</div>
+
+<footer>AI Rule Engine • Android Safe</footer>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+let winCount = 0;
+let lossCount = 0;
+let confidence = 65;
+let lockTime = 0;
+let lockInterval = null;
+
+function updateAI(){
+  const modeBox = document.getElementById("modeBox");
+  const ruleBox = document.getElementById("ruleBox");
+  const confBox = document.getElementById("confidenceBox");
+
+  if(lossCount >= 2){
+    modeBox.className = "mode safe";
+    modeBox.innerHTML = " SAFE MODE";
+    ruleBox.innerHTML = "2 LOSS berturut<br>STOP trading";
+    confidence = 30;
+    startLock(600);
+  } else if(winCount >= 2){
+    modeBox.className = "mode trend";
+    modeBox.innerHTML = "🟢 TREND MODE";
+    ruleBox.innerHTML = "Ikuti trend<br>Pullback MA 21";
+    confidence = 85;
+  } else {
+    modeBox.className = "mode scalp";
+    modeBox.innerHTML = " SCALPING MODE";
+    ruleBox.innerHTML = "Fast & Safe<br>BB + Stochastic";
+    confidence = 65;
+  }
+  confBox.innerHTML = "Confidence: " + confidence + "%";
+}
+
+function startLock(sec){
+  if(lockInterval) return;
+  const lockBox = document.getElementById("lockBox");
+  lockTime = sec;
+  lockBox.style.display = "block";
+  lockInterval = setInterval(()=>{
+    let m = Math.floor(lockTime/60);
+    let s = lockTime%60;
+    lockBox.innerHTML = `SAFE LOCK: ${m}:${s<10?'0':''}${s}`;
+    lockTime--;
+    if(lockTime < 0){
+      clearInterval(lockInterval);
+      lockInterval = null;
+      lockBox.style.display = "none";
+      winCount = 0;
+      lossCount = 0;
+      updateAI();
+    }
+  },1000);
+}
+
+function buyWin(){ if(lockInterval) return; winCount++; lossCount=0; updateAI(); }
+function sellWin(){ if(lockInterval) return; winCount++; lossCount=0; updateAI(); }
+function buyLoss(){ if(lockInterval) return; lossCount++; winCount=0; updateAI(); }
+function sellLoss(){ if(lockInterval) return; lossCount++; winCount=0; updateAI(); }
+
+new TradingView.widget({
+  width:"100%",
+  height:420,
+  symbol:"FX:EURUSD",
+  interval:"1",
+  theme:"dark",
+  studies:[
+    "MA@tv-basicstudies",
+    "RSI@tv-basicstudies",
+    "BB@tv-basicstudies",
+    "Stochastic@tv-basicstudies"
+  ],
+  container_id:"tv_chart"
+});
+
+updateAI();
+</script>
+
+</body>
+</html>
