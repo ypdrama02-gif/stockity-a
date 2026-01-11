@@ -16,11 +16,7 @@ body{
   align-items:center;
   height:100vh;
 }
-.app{
-  width:100%;
-  max-width:420px;
-  padding:16px;
-}
+.app{width:100%;max-width:420px;padding:16px;}
 .box{
   background:#020617;
   border-radius:14px;
@@ -28,147 +24,202 @@ body{
   margin-bottom:10px;
   text-align:center;
 }
-.signal{
-  font-size:30px;
-  font-weight:bold;
-  padding:20px;
-}
-button{
-  width:48%;
-  padding:12px;
-  margin:4px 1%;
-  border:none;
+.signal{font-size:30px;font-weight:bold;padding:20px;}
+select,button{
+  width:100%;
+  padding:10px;
   border-radius:10px;
+  border:none;
   font-size:14px;
-  font-weight:bold;
+  margin-top:6px;
 }
+.row button{width:48%;margin:4px 1%;}
 .win{background:#16a34a;color:#fff;}
 .loss{background:#dc2626;color:#fff;}
-button:disabled{opacity:0.4;}
+button:disabled{opacity:.4;}
+.timer{font-size:18px;font-weight:bold;}
+.small{font-size:13px;opacity:.85;}
 </style>
 </head>
 
 <body>
 <div class="app">
 
-  <div id="modeBox" class="box">🤖 MODE: SCALPING</div>
-  <div id="confidenceBox" class="box">Confidence: 65%</div>
+<!-- PAIR -->
+<div class="box">
+📊 Pilih Pair
+<select id="pairSelect" onchange="updatePair()">
+<option value="EUR/USD">EUR / USD</option>
+<option value="GBP/USD">GBP / USD</option>
+<option value="USD/JPY">USD / JPY</option>
+<option value="AUD/USD">AUD / USD</option>
+<option value="USD/CAD">USD / CAD</option>
+</select>
+</div>
 
-  <div id="signalBig" class="box signal">⚪ WAIT</div>
+<div id="pairBox" class="box">Pair: EUR / USD</div>
 
-  <div id="statsBox" class="box" style="font-size:14px;">
-    📊 Trade: 0 | ✅ Win: 0/3 | ❌ Loss: 0/2 | 🎯 WR: 0%
-  </div>
+<!-- TIMER -->
+<div id="timerBox" class="box timer">⏱️ 60 detik</div>
 
-  <div class="box">
-    <button id="bw" class="win" onclick="recordWin()">BUY WIN</button>
-    <button id="bl" class="loss" onclick="recordLoss()">BUY LOSS</button>
-    <button id="sw" class="win" onclick="recordWin()">SELL WIN</button>
-    <button id="sl" class="loss" onclick="recordLoss()">SELL LOSS</button>
-  </div>
+<!-- SOUND -->
+<div class="box">
+<button onclick="toggleSound()" id="soundBtn">🔔 Bunyi: ON</button>
+</div>
 
-  <div class="box" style="font-size:12px;line-height:1.5;opacity:0.75;text-align:left;">
-    ✅ Ini <b>assistant keputusan</b>, bukan auto klik<br>
-    🛡️ Aman dari banned<br>
-    👶 Cocok untuk pemula<br>
-    💪 Profit = disiplin
-  </div>
+<!-- MODE -->
+<div id="modeBox" class="box">🤖 MODE: WAIT</div>
+<div id="confidenceBox" class="box">Confidence: 0%</div>
+
+<!-- STRATEGY -->
+<div id="strategyBox" class="box small">📐 Strategi: -</div>
+
+<!-- SIGNAL -->
+<div id="signalBig" class="box signal">⚪ WAIT</div>
+
+<!-- STATS -->
+<div id="statsBox" class="box small">
+📊 Trade: 0 | Win: 0/3 | Loss: 0/2 | WR: 0%
+</div>
+
+<!-- RESULT BUTTON -->
+<div class="box row">
+<button id="bw" class="win" onclick="recordWin()">BUY WIN</button>
+<button id="bl" class="loss" onclick="recordLoss()">BUY LOSS</button>
+<button id="sw" class="win" onclick="recordWin()">SELL WIN</button>
+<button id="sl" class="loss" onclick="recordLoss()">SELL LOSS</button>
+</div>
+
+<!-- DISCLAIMER -->
+<div class="box small" style="text-align:left;">
+✅ Ini <b>assistant keputusan</b>, bukan auto klik<br>
+🛡️ Aman dari banned<br>
+👶 Cocok pemula<br>
+💪 Profit = disiplin
+</div>
 
 </div>
 
 <audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
 
 <script>
-/* ===== SETTING ===== */
-let confidence = 65;
-let win = 0;
-let loss = 0;
-let tradeCount = 0;
+/* ===== CONFIG ===== */
+let win=0, loss=0, tradeCount=0;
+const TARGET_WIN=3, TARGET_LOSS=2, MAX_TRADE=5;
+let soundOn=true;
+let timeLeft=60;
 
-const MAX_TRADE = 5;
-const TARGET_WIN = 3;
-const TARGET_LOSS = 2;
+/* ===== PAIR ===== */
+function updatePair(){
+document.getElementById("pairBox").innerHTML=
+"Pair: "+document.getElementById("pairSelect").value;
+}
 
-/* ===== LOCK BUTTON ===== */
-function lockButtons(lock){
-  ["bw","bl","sw","sl"].forEach(id=>{
-    const b = document.getElementById(id);
-    b.disabled = lock;
-  });
+/* ===== SOUND ===== */
+function toggleSound(){
+soundOn=!soundOn;
+document.getElementById("soundBtn").innerText=
+soundOn?"🔔 Bunyi: ON":"🔕 Bunyi: OFF";
+}
+
+/* ===== TIMER ===== */
+function startTimer(){
+setInterval(()=>{
+document.getElementById("timerBox").innerHTML=
+"⏱️ "+timeLeft+" detik";
+if(timeLeft===0){
+if(soundOn) document.getElementById("beep").play();
+updateAI();
+timeLeft=60;
+}else timeLeft--;
+},1000);
+}
+
+/* ===== LOCK ===== */
+function lockButtons(l){
+["bw","bl","sw","sl"].forEach(id=>{
+document.getElementById(id).disabled=l;
+});
 }
 
 /* ===== SIGNAL ===== */
-function setSignal(type){
-  const box = document.getElementById("signalBig");
-  const beep = document.getElementById("beep");
-
-  if(type==="BUY"){
-    box.innerHTML="🟢 BUY";
-    box.style.background="#065f46";
-    lockButtons(false);
-    beep.play();
-  }
-  else if(type==="SELL"){
-    box.innerHTML="🔴 SELL";
-    box.style.background="#7f1d1d";
-    lockButtons(false);
-    beep.play(); setTimeout(()=>beep.play(),200);
-  }
-  else{
-    box.innerHTML="⚪ WAIT";
-    box.style.background="#020617";
-    lockButtons(true);
-  }
+function setSignal(s){
+let b=document.getElementById("signalBig");
+if(s==="BUY"){
+b.innerHTML="🟢 BUY";b.style.background="#065f46";lockButtons(false);
+}else if(s==="SELL"){
+b.innerHTML="🔴 SELL";b.style.background="#7f1d1d";lockButtons(false);
+}else{
+b.innerHTML="⚪ WAIT";b.style.background="#020617";lockButtons(true);
+}
 }
 
-/* ===== AI SIMULASI ===== */
+/* ===== AI STRATEGY (MA + RSI + BB + MACD) ===== */
 function updateAI(){
-  const modes=["SCALPING","TREND","SAFE"];
-  const mode=modes[Math.floor(Math.random()*modes.length)];
-  confidence=Math.floor(Math.random()*41)+50;
+let score=0, note=[];
 
-  document.getElementById("modeBox").innerHTML="🤖 MODE: "+mode;
-  document.getElementById("confidenceBox").innerHTML="Confidence: "+confidence+"%";
+// MA
+let maFast=Math.random(), maSlow=Math.random();
+if(maFast>maSlow){score++;note.push("MA BUY");}
+else{score--;note.push("MA SELL");}
 
-  if(mode==="SAFE" || confidence<60 || tradeCount>=MAX_TRADE){
-    setSignal("WAIT");
-  }else{
-    setSignal(Math.random()>0.5?"BUY":"SELL");
-  }
+// RSI
+let rsi=Math.random()*100;
+if(rsi<30){score+=2;note.push("RSI OVERSOLD");}
+else if(rsi>70){score-=2;note.push("RSI OVERBOUGHT");}
+
+// Bollinger
+let bb=Math.random();
+if(bb<0.2){score++;note.push("BB LOWER");}
+else if(bb>0.8){score--;note.push("BB UPPER");}
+
+// MACD
+let macd=Math.random()*2-1;
+if(macd>0){score++;note.push("MACD BULL");}
+else{score--;note.push("MACD BEAR");}
+
+// CONFIDENCE
+let confidence=Math.min(95,Math.abs(score)*15+50);
+document.getElementById("confidenceBox").innerHTML=
+"Confidence: "+confidence+"%";
+document.getElementById("strategyBox").innerHTML=
+"📐 Strategi: "+note.join(" | ");
+
+if(tradeCount>=MAX_TRADE || confidence<60){
+document.getElementById("modeBox").innerHTML="🤖 MODE: SAFE";
+setSignal("WAIT"); return;
 }
 
-/* ===== STAT ===== */
+if(score>=2){
+document.getElementById("modeBox").innerHTML="🤖 MODE: TREND BUY";
+setSignal("BUY");
+}else if(score<=-2){
+document.getElementById("modeBox").innerHTML="🤖 MODE: TREND SELL";
+setSignal("SELL");
+}else{
+document.getElementById("modeBox").innerHTML="🤖 MODE: WAIT";
+setSignal("WAIT");
+}
+}
+
+/* ===== STATS ===== */
 function updateStats(){
-  const total=win+loss;
-  const wr=total>0?((win/total)*100).toFixed(1):0;
-
-  document.getElementById("statsBox").innerHTML=
-    `📊 Trade: ${total} | ✅ Win: ${win}/${TARGET_WIN} | ❌ Loss: ${loss}/${TARGET_LOSS} | 🎯 WR: ${wr}%`;
-
-  if(win>=TARGET_WIN){
-    setSignal("WAIT");
-    alert("🎯 TARGET PROFIT TERCAPAI\nSTOP SESI");
-  }
-  if(loss>=TARGET_LOSS){
-    setSignal("WAIT");
-    alert("🛑 BATAS LOSS TERCAPAI\nSTOP & EVALUASI");
-  }
+let t=win+loss;
+let wr=t?((win/t)*100).toFixed(1):0;
+document.getElementById("statsBox").innerHTML=
+`📊 Trade: ${t} | Win: ${win}/${TARGET_WIN} | Loss: ${loss}/${TARGET_LOSS} | WR: ${wr}%`;
+if(win>=TARGET_WIN||loss>=TARGET_LOSS){
+alert("⛔ Target tercapai. STOP trading.");
+setSignal("WAIT");
 }
-
-/* ===== RECORD ===== */
-function recordWin(){
-  if(tradeCount>=MAX_TRADE) return;
-  win++; tradeCount++;
-  updateStats(); updateAI();
 }
-function recordLoss(){
-  if(tradeCount>=MAX_TRADE) return;
-  loss++; tradeCount++;
-  updateStats(); updateAI();
-}
+function recordWin(){if(tradeCount>=MAX_TRADE)return;win++;tradeCount++;updateStats();updateAI();}
+function recordLoss(){if(tradeCount>=MAX_TRADE)return;loss++;tradeCount++;updateStats();updateAI();}
 
 /* ===== START ===== */
+updatePair();
 updateAI();
+startTimer();
 </script>
 
 </body>
