@@ -1,95 +1,21 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<title>Stockity AI Scalper</title>
+from flask import Flask, render_template, jsonify
+import random # Pengganti logika AI sementara
 
-<style>
-body{background:#0f172a;color:white;font-family:Arial}
-.app{max-width:360px;margin:auto;text-align:center;padding:15px}
-select,button{width:100%;padding:10px;border-radius:10px;margin:5px 0}
-#signal{font-size:36px;margin:15px;padding:10px;border-radius:10px}
-.buy{background:#16a34a}
-.sell{background:#dc2626}
-.wait{background:#64748b}
-</style>
-</head>
+app = Flask(__name__)
 
-<body>
-<div class="app">
-<h2>📊 Stockity AI Scalper</h2>
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-<select id="asset">
-  <option value="EUR">EUR/USD</option>
-  <option value="GBP">GBP/USD</option>
-  <option value="BTC">BTC/USDT</option>
-  <option value="ETH">ETH/USDT</option>
-</select>
+@app.route('/get_status')
+def get_status():
+    # Di sini AI bekerja dan mengirimkan data ke HTML
+    status_ai = {
+        "price": 150.25,
+        "prediction": "BUY",
+        "confidence": "85%"
+    }
+    return jsonify(status_ai)
 
-<div id="timer">⏱️ 60</div>
-<div id="signal" class="wait">WAIT</div>
-<div id="market">Market: NORMAL</div>
-<div id="conf">Confidence: --%</div>
-
-<button onclick="runBot()">ANALISA</button>
-
-<button onclick="win()">WIN</button>
-<button onclick="loss()">LOSS</button>
-
-</div>
-
-<script>
-let time=60,winC=0,lossC=0,strict=false;
-
-setInterval(()=>{
-  time--; if(time<=0)time=60;
-  timer.innerText="⏱️ "+time;
-},1000);
-
-function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
-function isCrypto(){return asset.value=="BTC"||asset.value=="ETH"}
-
-function runBot(){
-  let rsi=rand(0,100),ema9=rand(0,100),ema21=rand(0,100),
-      stoch=rand(0,100),vol=rand(0,100);
-
-  if(Math.abs(ema9-ema21)<3&&rsi>45&&rsi<55){
-    market.innerText="Market: SIDEWAYS 🚫";
-    return;
-  }
-  if(isCrypto()&&vol>80){
-    market.innerText="Market: SPIKE ⚡";
-    return;
-  }
-  market.innerText="Market: TREND ✅";
-
-  let rBuy=isCrypto()?25:30,rSell=isCrypto()?75:70,
-      sBuy=isCrypto()?15:20,sSell=isCrypto()?85:80,
-      minC=isCrypto()?85:80;
-
-  if(strict){minC+=5}
-
-  if(time<=3&&rsi<rBuy&&ema9>ema21&&stoch<sBuy){
-    signal("BUY","buy",minC+rand(0,10)); beep();
-  } else if(time<=3&&rsi>rSell&&ema9<ema21&&stoch>sSell){
-    signal("SELL","sell",minC+rand(0,10)); beep();
-  } else {
-    signal("WAIT","wait",rand(40,70));
-  }
-}
-
-function signal(t,c,cf){
-  signalBox.innerText=t;
-  signalBox.className=c;
-  conf.innerText="Confidence: "+cf+"%";
-}
-
-function win(){winC++;strict=false}
-function loss(){lossC++;strict=true}
-
-function beep(){
-  new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=").play();
-}
-</script>
-</body>
-</html>
+if __name__ == '__main__':
+    app.run(debug=True)
