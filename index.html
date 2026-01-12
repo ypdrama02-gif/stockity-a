@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stockity AI Signal</title>
+<title>Stockity AI Multi-Indicator</title>
 
 <style>
 body{
@@ -16,15 +16,15 @@ body{
   align-items:center;
   height:100vh;
 }
-.app{width:100%;max-width:420px;padding:16px;}
+.app{width:100%;max-width:420px;padding:14px;}
 .box{
   background:#020617;
   border-radius:14px;
-  padding:14px;
+  padding:12px;
   margin-bottom:10px;
   text-align:center;
 }
-.signal{font-size:30px;font-weight:bold;padding:20px;}
+.signal{font-size:30px;font-weight:bold;padding:18px;}
 select,button{
   width:100%;
   padding:10px;
@@ -39,6 +39,12 @@ select,button{
 button:disabled{opacity:.4;}
 .timer{font-size:18px;font-weight:bold;}
 .small{font-size:13px;opacity:.85;}
+canvas{
+  width:100%;
+  height:120px;
+  background:#020617;
+  border-radius:10px;
+}
 </style>
 </head>
 
@@ -47,13 +53,13 @@ button:disabled{opacity:.4;}
 
 <!-- PAIR -->
 <div class="box">
-📊 Pilih Pair
+📊 Pair
 <select id="pairSelect" onchange="updatePair()">
-<option value="EUR/USD">EUR / USD</option>
-<option value="GBP/USD">GBP / USD</option>
-<option value="USD/JPY">USD / JPY</option>
-<option value="AUD/USD">AUD / USD</option>
-<option value="USD/CAD">USD / CAD</option>
+<option>EUR / USD</option>
+<option>GBP / USD</option>
+<option>USD / JPY</option>
+<option>AUD / USD</option>
+<option>USD / CAD</option>
 </select>
 </div>
 
@@ -74,6 +80,12 @@ button:disabled{opacity:.4;}
 <!-- STRATEGY -->
 <div id="strategyBox" class="box small">📐 Strategi: -</div>
 
+<!-- GRAPH -->
+<div class="box small">
+📈 Grafik AI
+<canvas id="aiChart" width="360" height="120"></canvas>
+</div>
+
 <!-- SIGNAL -->
 <div id="signalBig" class="box signal">⚪ WAIT</div>
 
@@ -82,7 +94,7 @@ button:disabled{opacity:.4;}
 📊 Trade: 0 | Win: 0/3 | Loss: 0/2 | WR: 0%
 </div>
 
-<!-- RESULT BUTTON -->
+<!-- RESULT -->
 <div class="box row">
 <button id="bw" class="win" onclick="recordWin()">BUY WIN</button>
 <button id="bl" class="loss" onclick="recordLoss()">BUY LOSS</button>
@@ -90,9 +102,9 @@ button:disabled{opacity:.4;}
 <button id="sl" class="loss" onclick="recordLoss()">SELL LOSS</button>
 </div>
 
-<!-- DISCLAIMER -->
+<!-- INFO -->
 <div class="box small" style="text-align:left;">
-✅ Ini <b>assistant keputusan</b>, bukan auto klik<br>
+✅ Assistant keputusan (bukan auto klik)<br>
 🛡️ Aman dari banned<br>
 👶 Cocok pemula<br>
 💪 Profit = disiplin
@@ -104,10 +116,13 @@ button:disabled{opacity:.4;}
 
 <script>
 /* ===== CONFIG ===== */
-let win=0, loss=0, tradeCount=0;
+let win=0, loss=0, trade=0;
 const TARGET_WIN=3, TARGET_LOSS=2, MAX_TRADE=5;
 let soundOn=true;
 let timeLeft=60;
+
+/* ===== GRAPH DATA ===== */
+let points=[60,61,62,61,63,64,65,66,65,67];
 
 /* ===== PAIR ===== */
 function updatePair(){
@@ -123,22 +138,36 @@ soundOn?"🔔 Bunyi: ON":"🔕 Bunyi: OFF";
 }
 
 /* ===== TIMER ===== */
-function startTimer(){
 setInterval(()=>{
-document.getElementById("timerBox").innerHTML=
-"⏱️ "+timeLeft+" detik";
+document.getElementById("timerBox").innerHTML="⏱️ "+timeLeft+" detik";
 if(timeLeft===0){
 if(soundOn) document.getElementById("beep").play();
 updateAI();
 timeLeft=60;
 }else timeLeft--;
 },1000);
+
+/* ===== GRAPH ===== */
+function drawGraph(color){
+const c=document.getElementById("aiChart");
+const ctx=c.getContext("2d");
+ctx.clearRect(0,0,c.width,c.height);
+ctx.strokeStyle=color;
+ctx.lineWidth=2;
+ctx.beginPath();
+points.forEach((p,i)=>{
+let x=i*(c.width/(points.length-1));
+let y=c.height-(p-50)*2;
+if(i===0) ctx.moveTo(x,y);
+else ctx.lineTo(x,y);
+});
+ctx.stroke();
 }
 
 /* ===== LOCK ===== */
-function lockButtons(l){
+function lockBtn(v){
 ["bw","bl","sw","sl"].forEach(id=>{
-document.getElementById(id).disabled=l;
+document.getElementById(id).disabled=v;
 });
 }
 
@@ -146,50 +175,43 @@ document.getElementById(id).disabled=l;
 function setSignal(s){
 let b=document.getElementById("signalBig");
 if(s==="BUY"){
-b.innerHTML="🟢 BUY";b.style.background="#065f46";lockButtons(false);
+b.innerHTML="🟢 BUY";b.style.background="#065f46";lockBtn(false);
+drawGraph("#22c55e");
 }else if(s==="SELL"){
-b.innerHTML="🔴 SELL";b.style.background="#7f1d1d";lockButtons(false);
+b.innerHTML="🔴 SELL";b.style.background="#7f1d1d";lockBtn(false);
+drawGraph("#ef4444");
 }else{
-b.innerHTML="⚪ WAIT";b.style.background="#020617";lockButtons(true);
+b.innerHTML="⚪ WAIT";b.style.background="#020617";lockBtn(true);
+drawGraph("#9ca3af");
 }
 }
 
-/* ===== AI STRATEGY (MA + RSI + BB + MACD) ===== */
+/* ===== AI MULTI-INDICATOR ===== */
 function updateAI(){
 let score=0, note=[];
 
 // MA
-let maFast=Math.random(), maSlow=Math.random();
-if(maFast>maSlow){score++;note.push("MA BUY");}
-else{score--;note.push("MA SELL");}
-
+Math.random()>0.5?(score++,note.push("MA BUY")):(score--,note.push("MA SELL"));
 // RSI
 let rsi=Math.random()*100;
 if(rsi<30){score+=2;note.push("RSI OVERSOLD");}
 else if(rsi>70){score-=2;note.push("RSI OVERBOUGHT");}
-
-// Bollinger
-let bb=Math.random();
-if(bb<0.2){score++;note.push("BB LOWER");}
-else if(bb>0.8){score--;note.push("BB UPPER");}
-
+// Bollinger Band
+Math.random()<0.5?(score++,note.push("BB LOWER")):(score--,note.push("BB UPPER"));
 // MACD
-let macd=Math.random()*2-1;
-if(macd>0){score++;note.push("MACD BULL");}
-else{score--;note.push("MACD BEAR");}
+Math.random()>0.5?(score++,note.push("MACD BULL")):(score--,note.push("MACD BEAR"));
 
-// CONFIDENCE
 let confidence=Math.min(95,Math.abs(score)*15+50);
-document.getElementById("confidenceBox").innerHTML=
-"Confidence: "+confidence+"%";
-document.getElementById("strategyBox").innerHTML=
-"📐 Strategi: "+note.join(" | ");
+document.getElementById("confidenceBox").innerHTML="Confidence: "+confidence+"%";
+document.getElementById("strategyBox").innerHTML="📐 Strategi: "+note.join(" | ");
 
-if(tradeCount>=MAX_TRADE || confidence<60){
+points.push(points[points.length-1]+score);
+points.shift();
+
+if(trade>=MAX_TRADE||confidence<60){
 document.getElementById("modeBox").innerHTML="🤖 MODE: SAFE";
-setSignal("WAIT"); return;
+setSignal("WAIT");return;
 }
-
 if(score>=2){
 document.getElementById("modeBox").innerHTML="🤖 MODE: TREND BUY";
 setSignal("BUY");
@@ -213,13 +235,12 @@ alert("⛔ Target tercapai. STOP trading.");
 setSignal("WAIT");
 }
 }
-function recordWin(){if(tradeCount>=MAX_TRADE)return;win++;tradeCount++;updateStats();updateAI();}
-function recordLoss(){if(tradeCount>=MAX_TRADE)return;loss++;tradeCount++;updateStats();updateAI();}
+function recordWin(){if(trade>=MAX_TRADE)return;win++;trade++;updateStats();updateAI();}
+function recordLoss(){if(trade>=MAX_TRADE)return;loss++;trade++;updateStats();updateAI();}
 
 /* ===== START ===== */
 updatePair();
 updateAI();
-startTimer();
 </script>
 
 </body>
